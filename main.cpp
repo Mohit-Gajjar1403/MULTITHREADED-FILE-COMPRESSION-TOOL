@@ -101,6 +101,7 @@ int main(int argc, char* arg[])
     if(argc==2&&arg[1]=="--info"){
     cout<<"Hey this is my tool to compress and Decompress the text file this program is CLI based : \n"<<"The format of writing the command is :";
     cout<<" \n   ./myproject compress <input_file> <output_file> [--single|--multi|--time] [--time]\n";
+    return 0;
     }
     else{
         cout<<"Write commands Properly."<<endl;
