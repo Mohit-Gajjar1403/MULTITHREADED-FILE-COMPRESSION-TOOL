@@ -83,8 +83,8 @@
 
     ![decompression](image-5.png)
 
--This was the input for the small file decompression :
-    ![input](image-6.png)
+- This was the input for the small file decompression :
 
-- This is the output :
+    ![input](image-6.png)
+  
     ![output](image-7.png)
