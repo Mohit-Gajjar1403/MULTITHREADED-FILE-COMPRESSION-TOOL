@@ -95,6 +95,14 @@ string decompress(string content)
     }
     return str.str();
 }
+
+/*
+read():- reads the input file and store it in a string stram using the .rdbuf() function.
+write():- writes the content in the stream into the output file.
+compress():-compresses the string using a single thread.
+mcompress():-compresses the string using the multi-threads, in this function the content is divided into chunks and then assigned to each thread, thus the compression works parallely.
+decompress():- decompresses the file.
+    */
 int main(int argc, char* arg[])
 {
     if(argc<4){
