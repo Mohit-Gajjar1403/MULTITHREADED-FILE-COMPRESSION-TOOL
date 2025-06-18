@@ -1,176 +1,206 @@
 #include <bits/stdc++.h>
 using namespace std;
+
+// Function to read the entire content of a file into a string
 string read(string filename)
 {
-    ifstream file (filename);
-    if(!file)
+    ifstream file(filename);
+    if (!file)
     {
-        throw runtime_error("Not able to access file : "+ filename);
+        throw runtime_error("Not able to access file : " + filename);
     }
     stringstream content;
-    content<<file.rdbuf();
+    content << file.rdbuf(); // Read the file buffer into stringstream
     return content.str();
 }
+
+// Function to write a string content to a file
 void write(string content, string filename)
 {
     ofstream file(filename);
-    if(!file)
+    if (!file)
     {
-        throw runtime_error("Not able to access file : "+ filename);
+        throw runtime_error("Not able to access file : " + filename);
     }
-    file<<content;
+    file << content;
 }
+
+// Function to compress a string using basic RLE (Run-Length Encoding) technique (single-threaded)
 string compress(string content)
 {
-    if (content.empty()) 
+    if (content.empty())
         return "";
+
     stringstream str;
-    int c=1;
-    for(int i=1;i<=content.length();i++)
+    int c = 1;
+    for (int i = 1; i <= content.length(); i++)
     {
-        if(i<content.length()&&content[i]==content[i-1])
+        if (i < content.length() && content[i] == content[i - 1])
         {
-            c++;
+            c++; // Count repeating characters
         }
         else
         {
-            str<<c<<content[i-1];
-            c=1;
+            str << c << content[i - 1]; // Append count and character
+            c = 1;
         }
     }
-    return str.str();
+    return str.str(); // Return compressed string
 }
-string mcompress(string content,int tcount)
+
+// Function to compress string using multiple threads for speed optimization
+string mcompress(string content, int tcount)
 {
     /*
-        for multithreading we'll use this
-        we will create a vector of threads and assign a chunk of content to each thread
-        then we will compress the content to optimize time.
+        This function splits the content into 'tcount' chunks and compresses them in parallel using threads.
+        Each thread processes a portion of the content and stores its result in a shared vector.
     */
-   vector<thread> thr;
-   vector<string> str(tcount);
-   int csize=content.length()/tcount;
 
-   //lamda function to put chunks in str vector and then compress it alongide with threads
-   auto letscompress=[&](int x,int start, int end)
-   {
-        string s=content.substr(start,end-start);
-        str[x]=compress(s);
-   };
+    vector<thread> thr;           // Thread vector to manage multiple threads
+    vector<string> str(tcount);   // Stores results from each thread
+    int csize = content.length() / tcount; // Size of each chunk
 
-   for(int i=0;i<tcount;i++)
-   {
-        int st=i*csize;
-        int end=(i==tcount)?content.length():csize*(i+1);
-        thr.push_back(thread(letscompress,i,st,end));
-   }
-   
-   for(auto& t:thr)
-        t.join();
-    
-    string result=str[0];
-    for(int i=1;i<tcount;i++)
+    // Lambda function that compresses a chunk of the string
+    auto letscompress = [&](int x, int start, int end)
     {
-        result+=str[i];
+        string s = content.substr(start, end - start);
+        str[x] = compress(s);
+    };
+
+    // Create threads to compress each chunk
+    for (int i = 0; i < tcount; i++)
+    {
+        int st = i * csize;
+        int end = (i == tcount) ? content.length() : csize * (i + 1);
+        thr.push_back(thread(letscompress, i, st, end));
+    }
+
+    // Wait for all threads to finish
+    for (auto &t : thr)
+        t.join();
+
+    // Combine results from all threads
+    string result = str[0];
+    for (int i = 1; i < tcount; i++)
+    {
+        result += str[i];
     }
     return result;
 }
+
+// Function to decompress RLE-compressed string back to original
 string decompress(string content)
 {
     if (!isdigit(content[0])) {
         throw runtime_error("Invalid compressed file format.");
     }
+
     stringstream str;
-    int c=0;
-    for(char ch:content)
+    int c = 0;
+
+    for (char ch : content)
     {
-        if(isdigit(ch)){
-             if (c > 1e7) throw runtime_error("Invalid compressed format: too large repeat count");
-            c=c*10+(ch-'0');
+        if (isdigit(ch)) {
+            if (c > 1e7) throw runtime_error("Invalid compressed format: too large repeat count");
+            c = c * 10 + (ch - '0'); // Parse number from digits
         }
-        else{
-            str<<string(c,ch);
-            c=0;
+        else {
+            str << string(c, ch); // Append character 'c' times
+            c = 0;
         }
     }
     return str.str();
 }
 
 /*
-read():- reads the input file and store it in a string stram using the .rdbuf() function.
-write():- writes the content in the stream into the output file.
-compress():-compresses the string using a single thread.
-mcompress():-compresses the string using the multi-threads, in this function the content is divided into chunks and then assigned to each thread, thus the compression works parallely.
-decompress():- decompresses the file.
-    */
+Function Overview:
+read()        → Reads file content as a string.
+write()       → Writes a string to a file.
+compress()    → Compresses using Run-Length Encoding (RLE) in a single thread.
+mcompress()   → Compresses using multiple threads to improve performance.
+decompress()  → Decompresses an RLE-compressed string.
+*/
+
 int main(int argc, char* arg[])
 {
-    if(argc<4){
-    if(argc==2&&arg[1]=="--info"){
-    cout<<"Hey this is my tool to compress and Decompress the text file this program is CLI based : \n"<<"The format of writing the command is :";
-    cout<<" \n   ./myproject compress <input_file> <output_file> [--single|--multi|--time] [--time]\n";
-    return 0;
-    }
-    else{
-        cout<<"Write commands Properly."<<endl;
-        return 1;
-    }
-    }
-    string cd=arg[1], input=arg[2], output=arg[3];
-
-    bool multi=false, time=false;
-    // if no other arguments than we have to use single thread and not have to display time
-
-    for(int i=4;i<argc;i++)
-    {
-        string cond=arg[i];
-        if(cond=="--multi")
-            multi=true;
-        if(cond=="--single")
-            multi=false;
-        if(cond=="--time")
-            time=true;
-    }
-
-    try{
-        auto st=chrono::high_resolution_clock::now();
-        if(cd=="compress")
-        {
-            string content=read(input);
-            string compressed;
-            if(multi)
-            {
-               compressed=mcompress(content,5);
-            }
-            else{
-                compressed=compress(content);
-            }
-            write(compressed,output);
+    // If not enough arguments are provided
+    if (argc < 4) {
+        if (argc == 2 && arg[1] == "--info") {
+            // Provide usage info
+            cout << "Hey this is my tool to compress and Decompress the text file. This program is CLI based.\n";
+            cout << "The format of writing the command is:\n";
+            cout << "   ./myproject compress <input_file> <output_file> [--single|--multi|--time] [--time]\n";
+            return 0;
         }
-        else if(cd=="decompress")
+        else {
+            cout << "Write commands properly." << endl;
+            return 1;
+        }
+    }
+
+    string cd = arg[1], input = arg[2], output = arg[3];
+    bool multi = false, time = false;
+
+    // Parse optional arguments
+    for (int i = 4; i < argc; i++)
+    {
+        string cond = arg[i];
+        if (cond == "--multi")
+            multi = true;
+        if (cond == "--single")
+            multi = false;
+        if (cond == "--time")
+            time = true;
+    }
+
+    try {
+        // Measure time if requested
+        auto st = chrono::high_resolution_clock::now();
+
+        if (cd == "compress")
+        {
+            string content = read(input);
+            string compressed;
+
+            if (multi)
+            {
+                compressed = mcompress(content, 5); // Use 5 threads
+            }
+            else {
+                compressed = compress(content);     // Use single thread
+            }
+
+            write(compressed, output);             // Write to output file
+        }
+        else if (cd == "decompress")
         {
             if (input == output) {
                 throw runtime_error("Input and output files must be different.");
             }
-            string content=read(input);
-            string decompressed=decompress(content);
-            write(decompressed,output);
+
+            string content = read(input);
+            string decompressed = decompress(content);
+            write(decompressed, output);
         }
         else
         {
-            cout<<" Write Compress or Decompress only"<<endl;
+            cout << " Write 'compress' or 'decompress' only" << endl;
         }
-        auto fn=chrono::high_resolution_clock::now();
-        if(time)
+
+        auto fn = chrono::high_resolution_clock::now();
+
+        // Show execution time if requested
+        if (time)
         {
-            cout<<"Seccessfully Done!\n";
-            chrono::duration<double> duration = fn-st;
-            cout<<"Execution time : "<<duration.count()<<" seconds "<<endl;
+            cout << "Successfully Done!\n";
+            chrono::duration<double> duration = fn - st;
+            cout << "Execution time : " << duration.count() << " seconds " << endl;
         }
     }
-    catch(exception& e)
+    catch (exception &e)
     {
-        cerr<<"Error : "<<e.what()<<endl;
+        cerr << "Error : " << e.what() << endl; // Display error message if any exception occurs
     }
+
     return 0;
 }
